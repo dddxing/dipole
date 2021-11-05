@@ -4,21 +4,39 @@ from math import pi
 
 global g, T, dt, k_floor
 
-mass_init = [[2, 4, 0, 0, 0, 0, 0, 0, 0, 0.8],
-        [0, 2, 0, 0, 0, 0, 0, 0, 0, 0.8]] # [[p1x, p1y, p1z, v1x, v1y, v1z, a1x, a1y, a1z, m1],[]]
-spring_init = [[100, 2]] # [[k1, l1o]]
+# mass_init = [
+#             [2, 4, 0, 0, 0, 0, 0, 0, 0, 0.8],
+#             [0, 2, 0, 0, 0, 0, 0, 0, 0, 0.8],
+#             [0, 6, 2, 0, 0, 0, 0, 0, 0, 0.8]] # [[p1x, p1y, p1z, v1x, v1y, v1z, a1x, a1y, a1z, m1],[]]
+x=3
+height = 3
+side = 1
+mass_init = [
+                [x, x, x, 0, 0, 0, 0, 0, 0, 0.8],
+                [x+1, x, x, 0, 0, 0, 0, 0, 0, 0.8],
+                [x, x+1, x, 0, 0, 0, 0, 0, 0, 0.8],
+                [x, x, x+1, 0, 0, 0, 0, 0, 0, 0.8],
+                [x+1, x+1, x, 0, 0, 0, 0, 0, 0, 0.8],
+                [x+1, x, x+1, 0, 0, 0, 0, 0, 0, 0.8],
+                [x, x+1, x+1, 0, 0, 0, 0, 0, 0, 0.8],
+                [x+1, x+1, x+1, 0, 0, 0, 0, 0, 0, 0.8]]
 
-# mass_init = [[2, 4, 0, 0, 0, 0, 0, 0, 0, 1]]
-# spring_init = [] # [[k1, l1o]]
+spring_const_default = 10
+spring_length_default = 2
+spring_init = []
+for i in range(len(mass_init)):
+    for j in range(i+1, len(mass_init)):
+        dist = sqrt((mass_init[i][0] - mass_init[j][0]) ** 2 + (mass_init[i][1] - mass_init[j][1]) ** 2 + (mass_init[i][2] - mass_init[j][2]) ** 2)
+        # if dist < sqrt(2):
+        # dist = spring_length_default
+        spring_init.append([spring_const_default, dist])
 
-g = vector(0, -9.81, 0)
-# g = -9.81
+# g = vector(0, -98.1, 0)
+g = vector(0, -9.81, 0) 
 F_ext = vector(0,0,0) #external force
-damping_coefficent = 0.999
-dt = 0.0001
-k_floor = 1000
-
-
+damping_coefficent = 0.9
+dt = 0.01
+k_floor = 10000
 
 def make_axes(length):
     global axes
@@ -32,7 +50,7 @@ def make_axes(length):
     return 
 
 def create_floor():
-    floor = box(pos=vector(0,0,0), size = vector(10, 0.25, 10), color = color.blue, texture=textures.rough)
+    floor = box(pos=vector(0,0,0), size = vector(20, 0.25, 20), color = color.blue)
     return floor
 
 
@@ -46,7 +64,7 @@ def main():
 
     # loop through mass_init to create the spheres
     for mass in mass_init:
-        m.append(sphere(pos=vector(mass[0], mass[1], mass[2]), color=color.green, radius=0.3, vel=vector(mass[3], mass[4], mass[5]), accel=vector(mass[6], mass[7], mass[8]), force=vector(mass[6], mass[7], mass[8]), m=mass[9]))
+        m.append(sphere(pos=vector(mass[0], mass[1], mass[2]), color=color.green, radius=0.1, vel=vector(mass[3], mass[4], mass[5]), accel=vector(mass[6], mass[7], mass[8]), force=vector(mass[6], mass[7], mass[8]), m=mass[9]))
 
     for spring in spring_init:
         for i in range(len(m)):
@@ -54,22 +72,24 @@ def main():
 
                 # initilizing dist btw two points 
 
-                dist = mag2(m[i].pos - m[j].pos)
+                dist = mag(m[i].pos - m[j].pos)
+                
                 # initilizing scalar spring force
-                force_scalar = spring[0]* (dist - spring[1])
+                force_scalar = spring[0] * (dist - spring[1])
                 
                 # initilizing direction of the spring force
                 F_spring_dir = norm(m[i].pos - m[j].pos)
-
+                # F_spring_dir = (m[i].pos - m[j].pos) / dist
                 # calculate the spring force vector using direction and scalar
                 F_spring = force_scalar * F_spring_dir
-                
-                s.append(curve([m[i].pos, m[j].pos], color=color.red, radius=0.1, k=spring[0], l0=spring[1], force=F_spring, nodeA=m[i], nodeB=m[j]))
+                # if dist <= sqrt(2):
+                s.append(curve([m[i].pos, m[j].pos], color=color.red, radius=0.05, k=spring[0], l0=spring[1], force=F_spring, nodeA=m[i], nodeB=m[j]))
 
     T = 0
-    while T < 10:
+    i = 1
+    while i < 100000:
         # from IPython import embed; embed()
-        rate(1/dt)
+        rate(1000)
 
         for mass in m:
 
@@ -93,40 +113,39 @@ def main():
                 mass.force += force_floor
 
         for mass in m:
-            print(f"force: {mass.force}")
+            # print(f"force: {mass.force}")
             mass.accel = mass.force / mass.m
-            print(f"accel: {mass.accel}")
+            # print(f"accel: {mass.accel}")
             mass.vel = mass.vel * damping_coefficent + mass.accel * dt
-            print(f"vel: {mass.vel}")
+            # print(f"vel: {mass.vel}")
             mass.pos += mass.vel * dt
 
             
-            mass.force = vector(0, 0, 0)
+            # mass.force = vector(0, 0, 0)
             
 
         # loop through springs and update connections
         for spring in s:
-            for i in range(0, len(m)):
-                for j in range(i+1, len(m)):
-                    spring.modify(0, m[i].pos)
-                    spring.modify(1, m[j].pos)
+            for mass in m:
+                if spring.nodeA == mass:
+                    spring.modify(0, mass.pos, visible=1)
+                if spring.nodeB == mass:
+                    spring.modify(1, mass.pos, visible=1)
+                mass.force = vector(0, 0, 0)
 
-            # dist = sqrt((spring.nodeA.pos.x - spring.nodeB.pos.x) ** 2 + (spring.nodeA.pos.y - spring.nodeB.pos.y) ** 2+ (spring.nodeA.pos.z - spring.nodeB.pos.z) ** 2)
 
-            dist = mag2(spring.nodeA.pos - spring.nodeB.pos)
+            dist = mag(spring.nodeA.pos - spring.nodeB.pos)
             
             force_scalar = spring.k * (dist- spring.l0)
             F_spring_dir = norm(spring.nodeA.pos - spring.nodeB.pos)
+            # F_spring_dir = (spring.nodeA.pos - spring.nodeB.pos) / dist
             spring.force = F_spring_dir * force_scalar
 
 
-
-
-
-
-        if T % 100 == 0:
-            print(f"pos = {m[0].pos}" )
-        T += dt
+        # if T % 100 == 0:
+        # print(f"pos = {m[0].pos}" )
+        # T += dt
+        i += 1
 
 
 if __name__ == "__main__":
