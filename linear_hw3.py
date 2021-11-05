@@ -4,16 +4,21 @@ from math import pi
 
 global g, T, dt, k_floor
 
-mass_init = [[2, 4, 0, 0, 0, 0, 0, 0, 0, 5],
-        [0, 2, 0, 0, 0, 0, 0, 0, 0, 5]] # [[p1x, p1y, p1z, v1x, v1y, v1z, a1x, a1y, a1z, m1],[]]
-spring_init = [[10000, 2]] # [[k1, l1o]]
+mass_init = [[2, 4, 0, 0, 0, 0, 0, 0, 0, 0.8],
+        [0, 2, 0, 0, 0, 0, 0, 0, 0, 0.8]] # [[p1x, p1y, p1z, v1x, v1y, v1z, a1x, a1y, a1z, m1],[]]
+spring_init = [[100, 2]] # [[k1, l1o]]
+
+# mass_init = [[2, 4, 0, 0, 0, 0, 0, 0, 0, 1]]
+# spring_init = [] # [[k1, l1o]]
 
 g = vector(0, -9.81, 0)
 # g = -9.81
 F_ext = vector(0,0,0) #external force
-
+damping_coefficent = 0.999
 dt = 0.0001
 k_floor = 1000
+
+
 
 def make_axes(length):
     global axes
@@ -32,7 +37,7 @@ def create_floor():
 
 
 def main():
-    axis = make_axes(1)
+    # axis = make_axes(1)
     floor = create_floor()
 
     # storing mass and spring objects
@@ -47,56 +52,76 @@ def main():
         for i in range(len(m)):
             for j in range(i+1, len(m)):
 
-                # getting dist btw two points 
-                dist = sqrt((m[i].pos.x - m[j].pos.x) ** 2 + (m[i].pos.y - m[j].pos.y) ** 2+ (m[i].pos.z - m[j].pos.z) ** 2)
-                
-                # getting scalar spring force
-                force_scalar = spring[0]* (dist-spring[1])
-                
-                # getting direction of the spring force
-                F_spring_dir = norm(m[i].pos - m[j].pos)
-                
-                s.append(curve([m[i].pos, m[j].pos], color=color.red, radius=0.1, k=spring[0], l0=spring[1], force=force_scalar*F_spring_dir, nodeA=m[i], nodeB=m[j]))
-    T = 0
-    while T < 10000:
+                # initilizing dist btw two points 
 
+                dist = mag2(m[i].pos - m[j].pos)
+                # initilizing scalar spring force
+                force_scalar = spring[0]* (dist - spring[1])
+                
+                # initilizing direction of the spring force
+                F_spring_dir = norm(m[i].pos - m[j].pos)
+
+                # calculate the spring force vector using direction and scalar
+                F_spring = force_scalar * F_spring_dir
+                
+                s.append(curve([m[i].pos, m[j].pos], color=color.red, radius=0.1, k=spring[0], l0=spring[1], force=F_spring, nodeA=m[i], nodeB=m[j]))
+
+    T = 0
+    while T < 10:
+        # from IPython import embed; embed()
         rate(1/dt)
 
         for mass in m:
+
             for spring in s:
-                # adding spring force from both end
+                # adding spring force from both ends
                 if spring.nodeA == mass:
-                    mass.force += spring.force
+                    mass.force -= spring.force
+
                 if spring.nodeB == mass:
                     mass.force += spring.force
             
             # adding gravity and external force
-            mass.force = mass.m * g + F_ext
+            mass.force += mass.m * g + F_ext
+            # print(mass.force)
             
-            dz = mass.pos.y - (floor.pos.y + floor.size.y + 2 * mass.radius)
-
+            dz = mass.pos.y - (floor.pos.y + floor.size.y + 1 * mass.radius)
+            
             # checking if mass is below floor level
             if dz < 0:
                 force_floor = vector(0, -k_floor * dz, 0)
                 mass.force += force_floor
 
         for mass in m:
-
+            print(f"force: {mass.force}")
             mass.accel = mass.force / mass.m
-            mass.vel += mass.accel * dt
+            print(f"accel: {mass.accel}")
+            mass.vel = mass.vel * damping_coefficent + mass.accel * dt
+            print(f"vel: {mass.vel}")
             mass.pos += mass.vel * dt
+
+            
+            mass.force = vector(0, 0, 0)
             
 
         # loop through springs and update connections
         for spring in s:
-            dist = sqrt((spring.nodeA.pos.x - spring.nodeB.pos.x) ** 2 + (spring.nodeA.pos.y - spring.nodeB.pos.y) ** 2+ (spring.nodeA.pos.z - spring.nodeB.pos.z) ** 2)
-            force_scalar = spring.k * (dist- spring.l0)
-            F_spring_dir = norm(spring.nodeA.pos - spring.nodeB.pos)
-            spring.force = F_spring_dir * force_scalar
             for i in range(0, len(m)):
                 for j in range(i+1, len(m)):
                     spring.modify(0, m[i].pos)
                     spring.modify(1, m[j].pos)
+
+            # dist = sqrt((spring.nodeA.pos.x - spring.nodeB.pos.x) ** 2 + (spring.nodeA.pos.y - spring.nodeB.pos.y) ** 2+ (spring.nodeA.pos.z - spring.nodeB.pos.z) ** 2)
+
+            dist = mag2(spring.nodeA.pos - spring.nodeB.pos)
+            
+            force_scalar = spring.k * (dist- spring.l0)
+            F_spring_dir = norm(spring.nodeA.pos - spring.nodeB.pos)
+            spring.force = F_spring_dir * force_scalar
+
+
+
+
 
 
         if T % 100 == 0:
